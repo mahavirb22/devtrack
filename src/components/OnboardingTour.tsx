@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 interface OnboardingTourProps {
   onComplete: () => void;
@@ -63,20 +64,6 @@ export default function OnboardingTour({ onComplete }: OnboardingTourProps) {
     driverObj.drive();
   }, [onComplete]);
 
-  // auto-start on mount
-  // inject driver.js styles once on mount
-  useEffect(() => {
-    const linkId = "driver-js-css";
-    if (document.getElementById(linkId)) return;
-    const link = document.createElement("link");
-    link.id = linkId;
-    link.rel = "stylesheet";
-    link.href = "https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css";
-    document.head.appendChild(link);
-    return () => {
-      document.getElementById(linkId)?.remove();
-    };
-  }, []);
 
   // auto-start on mount
   useEffect(() => {
