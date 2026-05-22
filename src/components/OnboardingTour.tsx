@@ -4,11 +4,6 @@ import { useEffect, useCallback } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
-interface OnboardingTourProps {
-  onComplete: () => void;
-}
-
-// steps match the actual widget ids on the dashboard
 const TOUR_STEPS = [
   {
     element: "#widget-contribution-graph",
@@ -47,7 +42,19 @@ const TOUR_STEPS = [
   },
 ];
 
-export default function OnboardingTour({ onComplete }: OnboardingTourProps) {
+async function markTourSeen() {
+  try {
+    await fetch("/api/user/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seen_onboarding: true }),
+    });
+  } catch {
+    // silent fail — not critical
+  }
+}
+
+export default function OnboardingTour() {
   const startTour = useCallback(() => {
     const driverObj = driver({
       showProgress: true,
@@ -55,23 +62,19 @@ export default function OnboardingTour({ onComplete }: OnboardingTourProps) {
       allowClose: true,
       steps: TOUR_STEPS,
       onDestroyStarted: () => {
-        // mark tour as seen whether user finishes or skips
-        onComplete();
+        markTourSeen();
         driverObj.destroy();
       },
     });
 
     driverObj.drive();
-  }, [onComplete]);
+  }, []);
 
-
-  // auto-start on mount
   useEffect(() => {
-  // skip tour in test environments to avoid blocking E2E tests
-  if (typeof window !== "undefined" && window.navigator.webdriver) return;
-  const timer = setTimeout(startTour, 800);
-  return () => clearTimeout(timer);
-}, [startTour]);
+    if (typeof window !== "undefined" && window.navigator.webdriver) return;
+    const timer = setTimeout(startTour, 800);
+    return () => clearTimeout(timer);
+  }, [startTour]);
 
   return null;
 }
