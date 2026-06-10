@@ -367,7 +367,7 @@ test.describe("visual regression screenshots", () => {
     await stabilize(page);
 
     await expect(page).toHaveScreenshot("landing-page-dark.png", {
-      fullPage: true,
+      clip: { x: 0, y: 0, width: 1280, height: 4400 },
     });
   });
 
