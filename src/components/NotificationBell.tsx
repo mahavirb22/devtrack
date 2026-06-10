@@ -22,8 +22,32 @@ export default function NotificationBell() {
   }, [unreadCountFromApi]);
 
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
+  useEffect(() => {
+    if (open) {
+      // Small delay to ensure it's rendered before focus
+      setTimeout(() => searchInputRef.current?.focus(), 10);
+    } else {
+      setSearchQuery("");
+      setDebouncedSearchQuery("");
+    }
+  }, [open]);
+
+  const filteredNotifications = notifications.filter((n) =>
+    debouncedSearchQuery
+      ? n.message.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      : true
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -186,6 +210,28 @@ export default function NotificationBell() {
             </div>
           </div>
 
+          <div className="p-3 border-b border-[var(--border)] relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search notifications..."
+              aria-label="Search notifications"
+              className="w-full pl-3 pr-8 py-1.5 text-sm bg-[var(--control)] text-[var(--card-foreground)] placeholder:text-[var(--muted-foreground)] border border-[var(--border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-shadow"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-[var(--card-foreground)] text-lg leading-none p-1"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
           <ul className="max-h-72 overflow-y-auto divide-y divide-[var(--border)]  scrollbar-thin">
             {loading ? (
               <li className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
@@ -195,12 +241,12 @@ export default function NotificationBell() {
               <li className="px-4 py-6 text-center text-sm text-[var(--destructive)]">
                 {error.message}
               </li>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <li className="px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
-                No notifications yet
+                {debouncedSearchQuery ? `No results for '${debouncedSearchQuery}'` : "No notifications yet"}
               </li>
             ) : (
-              notifications.map((n) => (
+              filteredNotifications.map((n) => (
                 <li
                   key={n.id}
                   className={`px-4 py-3 ${
@@ -208,7 +254,20 @@ export default function NotificationBell() {
                   }`}
                 >
                   <p className="text-sm text-[var(--card-foreground)]">
-                    {n.message}
+                    {debouncedSearchQuery ? (
+                      // Highlight matching text (case-insensitive)
+                      n.message.split(new RegExp(`(${debouncedSearchQuery})`, "gi")).map((part: string, i: number) =>
+                        part.toLowerCase() === debouncedSearchQuery.toLowerCase() ? (
+                          <mark key={i} className="bg-[var(--accent)]/20 text-inherit rounded-sm px-0.5">
+                            {part}
+                          </mark>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        )
+                      )
+                    ) : (
+                      n.message
+                    )}
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                     {timeAgo(n.created_at)}
