@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
 
 const year = new Date().getFullYear();
 
 export default function Footer() {
   const pathname = usePathname();
   const isLanding = pathname === "/";
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
   if (pathname === "/wrapped") return null;
 
@@ -43,9 +46,18 @@ export default function Footer() {
               <Link className="transition-all duration-200 hover:text-[var(--foreground)] hover:translate-x-1 w-fit" href="/">
                 Home
               </Link>
-              <Link className="transition-all duration-200 hover:text-[var(--foreground)] hover:translate-x-1 w-fit" href="/dashboard">
-                Dashboard
-              </Link>
+              {isAuthenticated ? (
+                <Link className="transition-all duration-200 hover:text-[var(--foreground)] hover:translate-x-1 w-fit" href="/dashboard">
+                  Dashboard
+                </Link>
+              ) : (
+                <button
+                  className="transition-all duration-200 hover:text-[var(--foreground)] hover:translate-x-1 w-fit text-left"
+                  onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                >
+                  Dashboard
+                </button>
+              )}
               <Link className="transition-all duration-200 hover:text-[var(--foreground)] hover:translate-x-1 w-fit" href="/leaderboard">
                 Leaderboard
               </Link>
