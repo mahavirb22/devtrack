@@ -167,6 +167,9 @@ function use3DTilt(aggressiveness = 15) {
       const rotateX = ((y - centerY) / centerY) * -aggressiveness;
       const rotateY = ((x - centerX) / centerX) * aggressiveness;
 
+      el.style.setProperty('--mouse-x', `${x}px`);
+      el.style.setProperty('--mouse-y', `${y}px`);
+
       setStyle({
         transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
         transition: 'transform 0.1s ease-out'
@@ -707,9 +710,6 @@ function AboutHighlightCard({
         transformOrigin: 'top center',
         transform: visible ? tiltStyle.transform : `perspective(1000px) rotateX(-90deg)`,
         transition: visible ? tiltStyle.transition : `opacity 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) ${index * 80}ms, transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) ${index * 80}ms`,
-        background: 'rgba(255, 255, 255, 0.02)',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         cursor: 'pointer',
