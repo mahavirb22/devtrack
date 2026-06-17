@@ -3,6 +3,7 @@ import SectionHeader from "./SectionHeader";
 
 import { useCallback, useEffect, useState } from "react";
 import { useAccount } from "@/components/AccountContext";
+import { useDashboardWidgetA11y } from "@/components/dashboard/DashboardWidgetA11yContext";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import PRStatusDonutChart from "./PRStatusDonutChart";
 import MiniPRTrendChart from "./MiniPRTrendChart";
@@ -12,6 +13,8 @@ interface PRMetricsSummary {
   merged: number;
   closed: number;
   total: number;
+  totalAdditions?: number;
+  totalDeletions?: number;
   avgReviewHours: number;
   avgFirstReviewHours: number | null;
   mergeRate: string;
@@ -52,6 +55,7 @@ export default function PRMetrics() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"authored" | "reviews">("authored");
   const [prFilter, setPrFilter] = useState<"all" | "merged" | "open">("all");
+  const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
   const [staleThresholdDays, setStaleThresholdDays] = useState(14);
   const [range, setRange] = useState<7 | 30 | 90>(30);
 
@@ -105,6 +109,10 @@ export default function PRMetrics() {
     const baseStats: PRStat[] = [
       { label: labels.open, value: source.open },
       { label: labels.merged, value: source.merged },
+      {
+        label: "Lines Changed",
+        value: `+${(source.totalAdditions ?? 0).toLocaleString()} / -${(source.totalDeletions ?? 0).toLocaleString()}`
+      },
       { label: labels.avgReview, value: `${source.avgReviewHours}h` },
       {
         label: labels.avgFirstReview,
@@ -173,6 +181,21 @@ export default function PRMetrics() {
         <SectionHeader title="PR Analytics" />
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-2">
+            {(["7d", "30d", "90d"] as const).map((option) => (
+              <button
+                key={option}
+                onClick={() => setRange(option)}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  range === option
+                    ? "bg-[var(--accent)] text-white"
+                    : "bg-[var(--control)] text-[var(--muted-foreground)] hover:bg-[var(--card-muted)]"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("authored")}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeTab === "authored" ? "bg-[var(--accent)] text-white" : "bg-[var(--control)] text-[var(--muted-foreground)] hover:bg-[var(--card-muted)]"
@@ -225,7 +248,7 @@ export default function PRMetrics() {
           <span className="sr-only">Loading PR analytics</span>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
+            {[1, 2, 3, 4, 5, 6,7].map((i) => (
               <div
                 key={i}
                 aria-hidden="true"

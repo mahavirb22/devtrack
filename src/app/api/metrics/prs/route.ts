@@ -20,6 +20,8 @@ interface PRMetricsBase {
   merged: number;
   closed: number;
   total: number;
+  totalAdditions: number;
+  totalDeletions: number;
   avgReviewHours: number;
   avgFirstReviewHours: number | null;
   mergeRate: number;
@@ -60,6 +62,8 @@ interface ReviewCommentEvent {
 
 interface GraphQLPullRequestNode {
   createdAt: string;
+  additions: number;
+  deletions: number;
   reviews: {
     nodes: { submittedAt: string }[];
   };
@@ -162,7 +166,8 @@ async function fetchPRMetrics(
   range: number,
   githubLogin?: string,
   orgName?: string | null,
-  excludedOrgs: string[] = []
+  excludedOrgs: string[] = [],
+  range:string="30d"
 ): Promise<PRMetricsBase> {
   const authorQ = githubLogin ? githubLogin : "@me";
   let q = `type:pr+author:${authorQ}`;
@@ -177,7 +182,6 @@ async function fetchPRMetrics(
   } else if (excludedOrgs.length > 0) {
     q += excludedOrgs.map((org) => `+-org:${org}`).join("");
   }
-
   const searchRes = await fetch(
     `${GITHUB_API}/search/issues?q=${q}&sort=updated&order=desc&per_page=100`,
     {
@@ -217,7 +221,7 @@ async function fetchPRMetrics(
   } else if (excludedOrgs.length > 0) {
     gqlSearchQ += excludedOrgs.map((org) => ` -org:${org}`).join("");
   }
-  gqlSearchQ += ` created:>${since}`;
+  gqlSearchQ += ` created:>${graphSince}`;
 
   const query = `
     query {
@@ -225,6 +229,8 @@ async function fetchPRMetrics(
         nodes {
           ... on PullRequest {
             createdAt
+            additions
+            deletions
             reviews(first: 1) { nodes { submittedAt } }
             repository { nameWithOwner }
           }
@@ -245,6 +251,15 @@ async function fetchPRMetrics(
 
   const gqlJson = (await gqlRes.json()) as GraphQLSearchResponse;
   const prs = gqlJson.data?.search?.nodes ?? [];
+  const totalAdditions = prs.reduce(
+    (sum, pr) => sum + (pr.additions || 0),
+    0
+  );
+
+  const totalDeletions = prs.reduce(
+    (sum, pr) => sum + (pr.deletions || 0),
+    0
+  );
 
   const reviewedPRs = prs.filter((pr) => pr.reviews?.nodes && pr.reviews.nodes.length > 0);
 
@@ -285,6 +300,8 @@ async function fetchPRMetrics(
     merged,
     closed,
     total: data.total_count,
+    totalAdditions,
+    totalDeletions,
     avgReviewHours: Math.round(avgReviewMs / 3600000),
     avgFirstReviewHours,
     mergeRate: sampleTotal > 0 ? merged / sampleTotal : 0,
@@ -376,6 +393,8 @@ async function fetchGitLabMRMetrics(token: string): Promise<PRMetricsBase> {
     merged,
     closed,
     total: totalCount ?? sampleTotal,
+    totalAdditions: 0,
+    totalDeletions: 0,
     avgReviewHours: Math.round(avgReviewMs / 3600000),
     avgFirstReviewHours: null,
     mergeRate: sampleTotal > 0 ? merged / sampleTotal : 0,
@@ -391,7 +410,8 @@ async function fetchCachedPRMetrics(
   range: number,
   githubLogin?: string,
   orgName?: string | null,
-  excludedOrgs: string[] = []
+  excludedOrgs: string[] = [],
+  range: string = "30d"
 ): Promise<PRMetricsBase> {
   const key = metricsCacheKey(cacheContext.userId, "prs", {
     range,
@@ -431,6 +451,8 @@ function formatPRMetrics(metrics: PRMetricsBase) {
     avgCycleTime: metrics.avgCycleTime,
     weeklyTrend: metrics.weeklyTrend,
     slowestRepos: metrics.slowestRepos,
+    totalAdditions: metrics.totalAdditions,
+    totalDeletions: metrics.totalDeletions,
   };
 }
 
@@ -569,7 +591,8 @@ export async function GET(req: NextRequest) {
         range,
         session.githubLogin,
         orgName,
-        excludedOrgs
+        excludedOrgs,
+        range
       );
 
       const [gitlab, reviews] = await Promise.all([
@@ -654,6 +677,15 @@ export async function GET(req: NextRequest) {
         .slice(0, 3);
 
       const combinedMetrics: PRMetricsBase = {
+        totalAdditions: results.reduce(
+          (sum, r) => sum + r.totalAdditions,
+          0
+        ),
+
+        totalDeletions: results.reduce(
+          (sum, r) => sum + r.totalDeletions,
+          0
+        ),
         open: combinedOpen,
         merged: combinedMerged,
         closed: combinedClosed,
@@ -706,7 +738,8 @@ export async function GET(req: NextRequest) {
       range,
       githubLogin,
       orgName,
-      excludedOrgs
+      excludedOrgs,
+      range
     );
 
     const [gitlab, reviews] = await Promise.all([
