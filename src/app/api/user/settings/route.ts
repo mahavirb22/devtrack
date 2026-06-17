@@ -7,7 +7,13 @@ import { encryptToken } from "@/lib/crypto";
 import { validateTextInput } from "@/lib/sanitize";
 import { clearLeaderboardCache } from "@/lib/leaderboard";
 import { cacheGet, cacheSet, cacheDelete } from "@/lib/metrics-cache";
-
+import {
+  defaultLocale,
+  isValidLocale,
+  localeCookieMaxAge,
+  localeCookieName,
+} from "@/i18n/config";
+import { logError } from "@/lib/error-handler";
 export const dynamic = "force-dynamic";
 
 async function fetchUserSettings(userId: string) {
@@ -248,7 +254,7 @@ export async function GET(req: NextRequest) {
   const result = await fetchUserSettings(user.id);
 
   if (result.error || !result.data) {
-    console.error(`Error fetching user settings: code=${result.error?.code} msg=${result.error?.message}`, result.error);
+    logError(result.error, {endpoint: "/api/user/settings", operation: "fetchSettings", userId: user.id,});
     return NextResponse.json({ error: "Failed to fetch user settings" }, { status: 500 });
   }
 
@@ -301,7 +307,7 @@ export async function PATCH(req: NextRequest) {
   // Retrieve supported columns first
   const settingsResult = await fetchUserSettings(user.id);
   if (settingsResult.error || !settingsResult.data) {
-    console.error("Error fetching settings during PATCH:", settingsResult.error);
+    logError(settingsResult.error, { endpoint: "/api/user/settings", operation: "fetchSettingsForUpdate", userId: user.id });
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }
 
@@ -463,7 +469,7 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (updateError || !updated) {
-    console.error("Error updating settings:", updateError);
+    logError(updateError, { endpoint: "/api/user/settings", operation: "updateSettings", userId: user.id });
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }
 
@@ -479,10 +485,8 @@ export async function PATCH(req: NextRequest) {
   if (leaderboardEligibilityChanged) {
     try {
       await clearLeaderboardCache();
-    } catch {
-      // Cache invalidation is best-effort — a failure must not prevent the
-      // settings response from reaching the client.
-      console.error("[settings] Failed to invalidate leaderboard cache after visibility change");
+    } catch(cacheError) {
+      logError(cacheError, { endpoint: "/api/user/settings", operation: "invalidateSettingsCache", userId: user.id });
     }
   }
 

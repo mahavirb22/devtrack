@@ -144,7 +144,8 @@ export async function fetchPublicContributions(
 
 export async function fetchPublicStreak(
   username: string,
-  token?: string
+  token?: string,
+  timezone?: string
 ): Promise<StreakData> {
   const since = new Date();
   since.setDate(since.getDate() - 365);
@@ -161,12 +162,24 @@ export async function fetchPublicStreak(
     items: Array<{ commit: { author: { date: string } } }>;
   };
 
+  const tz = timezone || "UTC";
   const activeDates = new Set<string>();
   for (const item of data.items) {
-    activeDates.add(item.commit.author.date.slice(0, 10));
+    try {
+      const d = new Date(item.commit.author.date);
+      const tzDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(d);
+      activeDates.add(tzDate);
+    } catch (e) {
+      activeDates.add(item.commit.author.date.slice(0, 10));
+    }
   }
 
-  const result = calculateStreakFromDates(activeDates);
+  const result = calculateStreakFromDates(activeDates, new Set(), tz);
   return {
     current: result.current,
     longest: result.longest,
@@ -331,7 +344,7 @@ export async function fetchPublicProfile(
     fetchPublicGists(user.github_login, githubToken),
     fetchPublicTopRepos(user.github_login, githubToken, 30),
     fetchPublicContributions(user.github_login, githubToken, 30),
-    fetchPublicStreak(user.github_login, githubToken),
+    fetchPublicStreak(user.github_login, githubToken, user.timezone),
     fetchPublicTopLanguages(user.github_login, githubToken),
     fetchPublicPullRequests(user.github_login, githubToken),
     options.includeAchievements
