@@ -629,6 +629,7 @@ export default function TopRepos() {
           repo={repo}
           idx={idx}
           isPinned={isPinned}
+          isBookmarked={bookmarkedRepos.includes(repo.name)}
           barWidth={barWidth}
           shortName={shortName}
           health={health}
@@ -636,6 +637,7 @@ export default function TopRepos() {
           onSelectActivity={setSelectedRepoForActivity}
           onSelectHealth={setActiveHealthRepo}
           onTogglePin={togglePin}
+          onToggleBookmark={handleToggleBookmark}
         />
       );
     })

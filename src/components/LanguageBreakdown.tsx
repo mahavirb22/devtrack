@@ -157,7 +157,7 @@ export default function LanguageBreakdown() {
     </h3>
 
     <p className="mt-2 max-w-sm text-sm text-[var(--muted-foreground)]">
-      Start committing code to repositories and we'll analyze the language distribution across your projects.
+      Start committing code to repositories and we&apos;ll analyze the language distribution across your projects.
     </p>
 
     <a

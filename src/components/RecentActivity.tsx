@@ -249,7 +249,7 @@ export default function RecentActivity() {
     </h3>
 
     <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-      We haven't found any recent GitHub activity for this account yet.
+      We haven&apos;t found any recent GitHub activity for this account yet.
       Push commits, open pull requests, or contribute to repositories to
       see activity appear here.
     </p>
